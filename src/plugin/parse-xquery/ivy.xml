@@ -36,7 +36,6 @@
   </publications>
 
   <dependencies>
-    <dependency org="net.sourceforge.saxon" name="saxon" rev="9.1.0.8" conf="*->default"/>
   </dependencies>
   
 </ivy-module>

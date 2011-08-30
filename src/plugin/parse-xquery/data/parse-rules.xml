@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<parse-rules>
+	<rule domain="test.org" pattern=".*" xquery="microdata.xq"/>
+	<rule domain="example.com" pattern="/product/" xquery="evanscycles-com.xq"/>
+</parse-rules>

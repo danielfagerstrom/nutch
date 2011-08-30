@@ -16,12 +16,16 @@
  */
 package org.apache.nutch.parse.xquery;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xquery.XQPreparedExpression;
 
 import junit.framework.TestCase;
 
@@ -29,12 +33,17 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.nutch.metadata.Metadata;
 import org.apache.nutch.parse.HTMLMetaTags;
 import org.apache.nutch.parse.Parse;
+import org.apache.nutch.parse.ParseData;
+import org.apache.nutch.parse.ParseImpl;
 import org.apache.nutch.parse.ParseResult;
 import org.apache.nutch.parse.ParseUtil;
 import org.apache.nutch.protocol.Content;
 import org.apache.nutch.util.NutchConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * @author daniel
@@ -45,44 +54,81 @@ public class TestXQueryParser extends TestCase {
 	// This system property is defined in ./src/plugin/build-plugin.xml
 	private String sampleDir = System.getProperty("test.data", ".");
 	private String fileSeparator = System.getProperty("file.separator");
+	private XQueryParser xQueryParser;
+	private Configuration conf;
 
 	public TestXQueryParser(String name) {
 		super(name);
-		// TODO Auto-generated constructor stub
 	}
 	
-	private DocumentFragment readHtmlDocument(InputStream is) throws Exception {
+	private Document readXMLDocument(InputStream is) throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setNamespaceAware(true);
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document document = builder.parse(is);
+		return document;
+	}
+	
+	private DocumentFragment readXMLFragment(InputStream is) throws Exception {
+		Document document = this.readXMLDocument(is);
 		DocumentFragment fragment = document.createDocumentFragment();
 		fragment.appendChild(document.getDocumentElement());
 		return fragment;
 	}
 	
-	public void testIt() throws Exception {
+	private void addConfigRules() {
+		File rulesFile = new File(sampleDir, "parse-rules.xml");
+		conf.set(XQueryParser.XQUERYPARSER_RULES_FILE, rulesFile.getAbsolutePath());
+	}
+
+	public void createXQueryParser() throws Exception {
+		conf = new Configuration();
+		addConfigRules();
+		this.xQueryParser = new XQueryParser();
+		this.xQueryParser.setConf(conf);
+		this.xQueryParser.printParseRules();
+	}
+
+	private Content createContent(Configuration conf)
+			throws FileNotFoundException, IOException {
 		String url = "http://test.org/";
 	    String contentType = "text/html";
 	    File file = new File(sampleDir, "kenmore-microwave-17in.html");
 	    FileInputStream is = new FileInputStream(file);
 	    byte bytes[] = new byte[(int) file.length()];
 	    is.read(bytes);
-	    Configuration conf = NutchConfiguration.create();
-	    conf.writeXml(System.out);
-	    Content content =
-	    	      new Content(url, url, bytes, contentType, new Metadata(), conf);
-	    Parse parse =  new ParseUtil(conf).parse(content).get(content.getUrl());
-
+	    Content content = new Content(url, url, bytes, contentType, new Metadata(), conf);
+		return content;
 	}
 
-	public void testIt2() throws Exception {
-		FileInputStream is = new FileInputStream(sampleDir + fileSeparator + "kenmore-microwave-17in.html");
-		DocumentFragment doc = this.readHtmlDocument(is);
-		Content content = null;
-		ParseResult parseResult = null;
+	public void testParse() throws Exception {
+		this.createXQueryParser();
+	    Content content = this.createContent(conf);
+		DocumentFragment doc = this.readXMLFragment(new ByteArrayInputStream(content.getContent()));
+		XQPreparedExpression expr = this.xQueryParser.matchURL(content.getUrl());
+		String parseResult = this.xQueryParser.parseDOM(expr, content.getUrl(), doc);
+		System.out.println(parseResult);
+	}
+	
+	public void testFilter() throws Exception {
+		this.createXQueryParser();
+	    Content content = this.createContent(conf);
+		DocumentFragment doc = this.readXMLFragment(new ByteArrayInputStream(content.getContent()));
+		ParseResult parseResult = ParseResult.createParseResult(content.getUrl(), new ParseImpl("", new ParseData()));
 		HTMLMetaTags metaTags = null;
-		XQueryParser xqp = new XQueryParser();
-		xqp.filter(content, parseResult, metaTags, doc);
+		this.xQueryParser.filter(content, parseResult, metaTags, doc);
+	    Parse parse = parseResult.get(content.getUrl());
+	    Metadata metadata = parse.getData().getParseMeta();
+	    String parseOutput = metadata.get(XQueryParser.METADATA_FIELD);
+		System.out.println(parseOutput);
+	}
+	
+	public void testIt() throws Exception {
+	    conf = NutchConfiguration.create();
+	    addConfigRules();
+		Content content = createContent(conf);
+	    Parse parse =  new ParseUtil(conf).parse(content).get(content.getUrl());
+	    String result = parse.getData().getMeta(XQueryParser.METADATA_FIELD);
+	    System.out.println(result);
 	}
 }

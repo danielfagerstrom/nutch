@@ -22,7 +22,7 @@
   <!-- for junit test -->
   <mkdir dir="${build.test}/data"/>
   <copy todir="${build.test}/data">
-    <fileset dir="data" includes="**/*.html, **/*.xq"/>
+    <fileset dir="data" includes="**/*.html, **/*.xq, **/*.xml"/>
   </copy>
 
 </project>
