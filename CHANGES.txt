@@ -2,6 +2,12 @@ Nutch Change Log
 
 Release 1.4 - Current development
 
+* NUTCH-1089 Short compressed pages caused exception in protocol-httpclient (Simone Frenzel via jnioche)
+
+* NUTCH-1085 Nutch script does not require HADOOP_HOME (jnioche)
+
+* NUTCH-1075 Delegate language identification to Tika (jnioche)
+
 * NUTCH-1049 Add classes to bin/nutch script (markus)
 
 * NUTCH-1051 Export WebGraph node scores for Solr.ExternalFileField (markus)
