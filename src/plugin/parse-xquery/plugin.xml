@@ -25,6 +25,7 @@
       <library name="parse-xquery.jar">
          <export name="*"/>
       </library>
+      <library name="saxon9he.jar"/>
    </runtime>
 
    <requires>
