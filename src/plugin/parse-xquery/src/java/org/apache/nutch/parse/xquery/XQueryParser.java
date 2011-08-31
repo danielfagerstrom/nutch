@@ -16,12 +16,12 @@
  */
 package org.apache.nutch.parse.xquery;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,7 +48,9 @@ import org.apache.nutch.parse.HTMLMetaTags;
 import org.apache.nutch.parse.HtmlParseFilter;
 import org.apache.nutch.parse.Parse;
 import org.apache.nutch.parse.ParseResult;
+import org.apache.nutch.parse.ParseUtil;
 import org.apache.nutch.protocol.Content;
+import org.apache.nutch.util.NutchConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
 import org.w3c.dom.Element;
@@ -143,9 +145,9 @@ public class XQueryParser implements HtmlParseFilter {
 	}
 	
 	private void parseRules() throws Exception {
-		String ruleFileName = this.getConf().get(XQUERYPARSER_RULES_FILE);
-		File rulesFile = new File(ruleFileName);
-	    FileInputStream is = new FileInputStream(rulesFile);
+		String rulesFileName = this.getConf().get(XQUERYPARSER_RULES_FILE);
+		URL rulesResource = this.getConf().getResource(rulesFileName);
+	    InputStream is = rulesResource.openStream();
 		Document document = this.readXMLDocument(is);
 		Element root = document.getDocumentElement();
 		if (!"parse-rules".equals(root.getTagName())) {
@@ -165,7 +167,8 @@ public class XQueryParser implements HtmlParseFilter {
 			String xquery = rule.getAttribute("xquery");
 			if (!this.rules.containsKey(domain))
 				this.rules.put(domain, new LinkedList<PatternQueryPair>());
-			InputStream xqis = new FileInputStream(new File(rulesFile.getParentFile(), xquery));
+			URL resolvedXQueryPath = rulesResource.toURI().resolve(xquery).toURL();
+			InputStream xqis = resolvedXQueryPath.openStream();
 			XQPreparedExpression expr = this.xqConnection.prepareExpression(xqis);
 			Pattern pattern = Pattern.compile(patternStr);
 			this.rules.get(domain).add(new PatternQueryPair(pattern, expr));
@@ -209,4 +212,32 @@ public class XQueryParser implements HtmlParseFilter {
 		}
 	}
 	
+	public static void main(String[] args) throws Exception {
+		if (args.length != 1) {
+			usage();
+			return;
+		}
+		String urlStr = args[0];
+	    Configuration conf = NutchConfiguration.create();
+		Content content = createContent(conf, urlStr);
+	    Parse parse =  new ParseUtil(conf).parse(content).get(content.getUrl());
+	    String result = parse.getData().getMeta(XQueryParser.METADATA_FIELD);
+	    System.out.println(result);
+	}
+
+	private static Content createContent(Configuration conf, String urlStr)
+			throws FileNotFoundException, IOException {
+	    String contentType = "text/html";
+	    URL url = new URL(urlStr);
+	    URLConnection connection = url.openConnection();
+	    InputStream is = connection.getInputStream();
+	    byte bytes[] = new byte[(int) connection.getContentLength()];
+	    is.read(bytes);
+	    Content content = new Content(urlStr, urlStr, bytes, contentType, new Metadata(), conf);
+		return content;
+	}
+
+	private static void usage() {
+	    System.err.println("Usage: XQueryParser <url>\n");		
+	}
 }

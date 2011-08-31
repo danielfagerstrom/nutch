@@ -41,9 +41,6 @@ import org.apache.nutch.protocol.Content;
 import org.apache.nutch.util.NutchConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * @author daniel
@@ -77,8 +74,7 @@ public class TestXQueryParser extends TestCase {
 	}
 	
 	private void addConfigRules() {
-		File rulesFile = new File(sampleDir, "parse-rules.xml");
-		conf.set(XQueryParser.XQUERYPARSER_RULES_FILE, rulesFile.getAbsolutePath());
+		conf.set(XQueryParser.XQUERYPARSER_RULES_FILE, "data/parse-rules.xml");
 	}
 
 	public void createXQueryParser() throws Exception {
