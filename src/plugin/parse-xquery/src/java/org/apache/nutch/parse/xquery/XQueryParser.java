@@ -43,6 +43,12 @@ import javax.xml.xquery.XQSequence;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.MapFile;
+import org.apache.hadoop.io.MapFile.Reader;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.MapFileOutputFormat;
 import org.apache.nutch.metadata.Metadata;
 import org.apache.nutch.parse.HTMLMetaTags;
 import org.apache.nutch.parse.HtmlParseFilter;
@@ -213,13 +219,32 @@ public class XQueryParser implements HtmlParseFilter {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		if (args.length != 1) {
+	    Configuration conf = NutchConfiguration.create();
+	    Content content = null;
+		if (args.length < 1) {
 			usage();
 			return;
 		}
 		String urlStr = args[0];
-	    Configuration conf = NutchConfiguration.create();
-		Content content = createContent(conf, urlStr);
+		String segment = null;
+		if (args.length == 2) {
+			segment = args[1];
+		}
+		if (segment != null) {
+			Path file = new Path(segment, Content.DIR_NAME);
+			FileSystem fs = FileSystem.get(conf);
+			System.out.println("path: " + file.toString());
+			Reader[] readers = MapFileOutputFormat.getReaders(fs, file, conf);
+			content = new Content();
+			for (Reader reader: readers) {
+				if (reader.get(new Text(urlStr), content) != null)
+					continue;
+			}
+			for (Reader reader: readers)
+				reader.close();
+		} else {
+			content = createContent(conf, urlStr);			
+		}
 	    Parse parse =  new ParseUtil(conf).parse(content).get(content.getUrl());
 	    String result = parse.getData().getMeta(XQueryParser.METADATA_FIELD);
 	    System.out.println(result);
@@ -238,6 +263,6 @@ public class XQueryParser implements HtmlParseFilter {
 	}
 
 	private static void usage() {
-	    System.err.println("Usage: XQueryParser <url>\n");		
+	    System.err.println("Usage: XQueryParser <url> [segment]\n");		
 	}
 }
