@@ -19,6 +19,8 @@ package org.apache.nutch.parse.xquery;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -29,6 +31,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.parse.ParseData;
+import org.apache.nutch.util.HadoopFSUtil;
 
 /**
  * @author daniel
@@ -54,16 +57,29 @@ public class ParseResult extends Configured implements Tool {
 	 */
 	@Override
 	public int run(String[] args) throws Exception {
-		if (args.length != 2) {
-			System.err.printf("Usage: %s [generic options] <input> <output>\n",
-			getClass().getSimpleName());
+		if (args.length < 2) {
+			System.err.printf("Usage: %s [generic options] (<segment> ... | -dir <segments>) <output>\n",
+					getClass().getSimpleName());
 			ToolRunner.printGenericCommandUsage(System.err);
 			return -1;
 		}
 
 		Job job = new Job(getConf());
-		FileInputFormat.addInputPath(job, new Path(args[0], ParseData.DIR_NAME));
-		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		for (int i = 0; i < args.length - 1; i++) {
+			if ("-dir".equals(args[i])) {
+		        Path dir = new Path(args[++i]);
+		        FileSystem fs = dir.getFileSystem(getConf());
+		        FileStatus[] fstats = fs.listStatus(dir,
+		                HadoopFSUtil.getPassDirectoriesFilter(fs));
+		        Path[] segments = HadoopFSUtil.getPaths(fstats);
+		        for (Path segment: segments) {
+		    		FileInputFormat.addInputPath(job, new Path(segment, ParseData.DIR_NAME));
+		        }
+			} else {
+				FileInputFormat.addInputPath(job, new Path(args[i], ParseData.DIR_NAME));				
+			}
+		}
+		FileOutputFormat.setOutputPath(job, new Path(args[args.length - 1]));
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setMapperClass(GetResultMapper.class);
