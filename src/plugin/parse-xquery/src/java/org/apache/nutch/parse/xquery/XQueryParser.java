@@ -40,6 +40,7 @@ import javax.xml.xquery.XQException;
 import javax.xml.xquery.XQPreparedExpression;
 import javax.xml.xquery.XQSequence;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -186,11 +187,12 @@ public class XQueryParser implements HtmlParseFilter {
 	public XQPreparedExpression matchURL(String urlStr) throws MalformedURLException {
 		URL url = new URL(urlStr);
 		String domain = url.getHost();
-		String path = url.getPath();
+		String pathAndQuery = url.getPath() + (url.getQuery() != null ? "?" + url.getQuery() : "");
+		
 		LinkedList<PatternQueryPair> ruleList = (LinkedList<PatternQueryPair>) this.rules.get(domain);
 		if (null != ruleList) {
 			for (PatternQueryPair pair: ruleList) {
-				Matcher matcher = pair.pattern.matcher(path);
+				Matcher matcher = pair.pattern.matcher(pathAndQuery);
 				if (matcher.matches())
 					return pair.expr;
 			}
@@ -256,8 +258,7 @@ public class XQueryParser implements HtmlParseFilter {
 	    URL url = new URL(urlStr);
 	    URLConnection connection = url.openConnection();
 	    InputStream is = connection.getInputStream();
-	    byte bytes[] = new byte[(int) connection.getContentLength()];
-	    is.read(bytes);
+	    byte bytes[] = IOUtils.toByteArray(is);
 	    Content content = new Content(urlStr, urlStr, bytes, contentType, new Metadata(), conf);
 		return content;
 	}
