@@ -2,6 +2,28 @@ Nutch Change Log
 
 Release 1.4 - Current development
 
+* NUTCH-1074 topN is ignored with maxNumSegments and generate.max.count (Robert Thomson via markus)
+
+* NUTCH-1078 Upgrade all instances of commons logging to slf4j (with log4j backend) (lewismc)
+
+* NUTCH-1115 Option to disable fixing embedded URL parameters in DomContentUtils (markus)
+
+* NUTCH-1114 Attr file missing in domain filter (markus)
+
+* NUTCH-1067 Configure minimum throughput for fetcher (markus)
+
+* NUTCH-1102 Fetcher to rely on fetcher.parse directive (markus)
+
+* NUTCH-1110 UpdateDB must not write _success file (markus)
+
+* NUTCH-1105 Max content length option for index-basic (markus)
+
+* NUTCH-940 static field plugin (Claudio Martella via lewismc)
+
+* NUTCH-914 Implement Apache Project Branding Requirements (lewismc)
+
+* NUTCH-1095 remove i18n from Nutch site to archive and legacy secton of wiki (lewismc)
+
 * NUTCH-1101 Option to purge db_gone records with updatedb (markus)
 
 * NUTCH-1096 Empty (not null) ContentLength results in failure of fetch (Ferdy Galema via jnioche)

@@ -704,6 +704,24 @@
   </description>
 </property>
 
+<property>
+  <name>fetcher.throughput.threshold.pages</name>
+  <value>-1</value>
+  <description>The threshold of minimum pages per second. If the fetcher downloads less
+  pages per second than the configured threshold, the fetcher stops, preventing slow queue's
+  from stalling the throughput. This threshold must be an integer. This can be useful when
+  fetcher.timelimit.mins is hard to determine. The default value of -1 disables this check.
+  </description>
+</property>
+
+<property>
+  <name>fetcher.throughput.threshold.retries</name>
+  <value>5</value>
+  <description>The number of times the fetcher.throughput.threshold is allowed to be exceeded.
+  This settings prevents accidental slow downs from immediately killing the fetcher thread.
+  </description>
+</property>
+
 <!-- moreindexingfilter plugin properties -->
 
 <property>
@@ -759,6 +777,14 @@
   <name>indexer.max.title.length</name>
   <value>100</value>
   <description>The maximum number of characters of a title that are indexed.
+  </description>
+</property>
+
+<property>
+  <name>indexer.max.content.length</name>
+  <value>-1</value>
+  <description>The maximum number of characters of a content that are indexed.
+  Content beyond the limit is truncated. A value of -1 disables this check.
   </description>
 </property>
 
@@ -895,7 +921,6 @@
   "all" doesn't show either content or summaries.</description>
 </property>
 
-
 <property>
   <name>parser.html.impl</name>
   <value>neko</value>
@@ -921,6 +946,13 @@
   iframe, script, link, img. If you add any of those tags here, it
   won't be taken. Default is empty list. Probably reasonable value
   for most people would be "img,script,link".</description>
+</property>
+
+<property>
+  <name>parser.fix.embeddedparams</name>
+  <value>true</value>
+  <description>Whether to fix URL embedded params using semi-colons.
+  See NUTCH-436 and NUTCH-1115</description>
 </property>
 
 <property>
@@ -1047,6 +1079,19 @@
   <description>If set to true with lang.extraction.policy containing identify,
   the language code returned by Tika will be assigned to the document ONLY
   if it is deemed certain by Tika.
+  </description>
+</property>
+
+<!-- index-static plugin properties -->
+
+<property>
+  <name>index-static</name>
+  <value></value>
+  <description>
+  A simple plugin called at indexing that adds fields with static data. 
+  You can specify a list of fieldname:fieldcontent per nutch job.
+  It can be useful when collections can't be created by urlpatterns, 
+  like in subcollection, but on a job-basis.
   </description>
 </property>
 
