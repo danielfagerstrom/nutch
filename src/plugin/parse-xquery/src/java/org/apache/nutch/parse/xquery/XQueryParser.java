@@ -46,7 +46,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.MapFile;
 import org.apache.hadoop.io.MapFile.Reader;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.MapFileOutputFormat;
@@ -99,34 +98,6 @@ public class XQueryParser implements HtmlParseFilter {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.apache.nutch.parse.HtmlParseFilter#filter(org.apache.nutch.protocol.Content, org.apache.nutch.parse.ParseResult, org.apache.nutch.parse.HTMLMetaTags, org.w3c.dom.DocumentFragment)
-	 */
-	@Override
-	public ParseResult filter(Content content, ParseResult parseResult,
-			HTMLMetaTags metaTags, DocumentFragment doc) {
-		String urlStr = content.getUrl();
-		try {
-			XQPreparedExpression expr = this.matchURL(urlStr);
-			if (expr != null) {
-				String parseOutput;
-				parseOutput = this.parseDOM(expr, urlStr, doc);
-			    // get parse obj
-			    Parse parse = parseResult.get(urlStr);
-			    Metadata metadata = parse.getData().getParseMeta();
-			    if (parseOutput != null) {
-			    	metadata.add(METADATA_FIELD, parseOutput);
-			    }
-			}
-		} catch (Exception e) {
-			if (LOG.isErrorEnabled()) { LOG.error(e.getMessage()); }
-			e.printStackTrace();
-			throw new RuntimeException(e.getMessage(), e);      
-		}
-
-		return parseResult;
-	}
-
 	public void setConf(Configuration conf) {
 		this.conf = conf;
 		try {
@@ -143,14 +114,71 @@ public class XQueryParser implements HtmlParseFilter {
 		return this.conf;
 	}
 
-	private Document readXMLDocument(InputStream is) throws Exception {
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		factory.setNamespaceAware(true);
-		DocumentBuilder builder = factory.newDocumentBuilder();
-		Document document = builder.parse(is);
-		return document;
+	/* (non-Javadoc)
+	 * @see org.apache.nutch.parse.HtmlParseFilter#filter(org.apache.nutch.protocol.Content, org.apache.nutch.parse.ParseResult, org.apache.nutch.parse.HTMLMetaTags, org.w3c.dom.DocumentFragment)
+	 */
+	@Override
+	public ParseResult filter(Content content, ParseResult parseResult,
+			HTMLMetaTags metaTags, DocumentFragment doc) {
+		String urlStr = content.getUrl();
+		try {
+			String parseOutput = parse(doc, urlStr);
+		    if (parseOutput != null) {
+			    // get parse obj
+			    Parse parse = parseResult.get(urlStr);
+			    Metadata metadata = parse.getData().getParseMeta();
+		    	metadata.add(METADATA_FIELD, parseOutput);
+		    }
+		} catch (Exception e) {
+			if (LOG.isErrorEnabled()) { LOG.error(e.getMessage()); }
+			e.printStackTrace();
+			throw new RuntimeException(e.getMessage(), e);      
+		}
+
+		return parseResult;
 	}
-	
+
+	public String parse(DocumentFragment doc, String urlStr)
+			throws MalformedURLException, XQException {
+		String parseOutput = null;
+		XQPreparedExpression expr = this.matchURL(urlStr);
+		if (expr != null) {
+			expr.bindNode(XQConstants.CONTEXT_ITEM, doc, null);
+			QName[] externalVariables = expr.getAllExternalVariables();
+			for (QName qName: externalVariables)
+				if ("url".equals(qName.getLocalPart()))
+					expr.bindString(new QName("url"), urlStr, null);
+			XQSequence sequence = expr.executeQuery();
+			parseOutput = sequence.getSequenceAsString(null);
+		}
+		return parseOutput;
+	}
+
+	public XQPreparedExpression matchURL(String urlStr) throws MalformedURLException {
+		URL url = new URL(urlStr);
+		String domain = url.getHost();
+		String pathAndQuery = url.getPath() + (url.getQuery() != null ? "?" + url.getQuery() : "");
+		
+		LinkedList<PatternQueryPair> ruleList = (LinkedList<PatternQueryPair>) this.rules.get(domain);
+		if (null != ruleList) {
+			for (PatternQueryPair pair: ruleList) {
+				Matcher matcher = pair.pattern.matcher(pathAndQuery);
+				if (matcher.matches())
+					return pair.expr;
+			}
+		}
+		return null;
+	}
+
+	public void printParseRules() {
+		for (Entry<String, List<PatternQueryPair>> domain : this.rules.entrySet()) {
+			System.out.println(domain.getKey());
+			for (PatternQueryPair pair: domain.getValue()) {
+				System.out.println("\t" + pair.pattern);
+			}
+		}
+	}
+
 	private void parseRules() throws Exception {
 		String rulesFileName = this.getConf().get(XQUERYPARSER_RULES_FILE);
 		URL rulesResource = this.getConf().getResource(rulesFileName);
@@ -184,42 +212,29 @@ public class XQueryParser implements HtmlParseFilter {
 		}
 	}
 	
-	public XQPreparedExpression matchURL(String urlStr) throws MalformedURLException {
-		URL url = new URL(urlStr);
-		String domain = url.getHost();
-		String pathAndQuery = url.getPath() + (url.getQuery() != null ? "?" + url.getQuery() : "");
-		
-		LinkedList<PatternQueryPair> ruleList = (LinkedList<PatternQueryPair>) this.rules.get(domain);
-		if (null != ruleList) {
-			for (PatternQueryPair pair: ruleList) {
-				Matcher matcher = pair.pattern.matcher(pathAndQuery);
-				if (matcher.matches())
-					return pair.expr;
-			}
-		}
-		return null;
+	private Document readXMLDocument(InputStream is) throws Exception {
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		factory.setNamespaceAware(true);
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		Document document = builder.parse(is);
+		return document;
 	}
-	
-	public String parseDOM(XQPreparedExpression expr, String urlStr, DocumentFragment doc) throws XQException {
-		expr.bindNode(XQConstants.CONTEXT_ITEM, doc, null);
-		QName[] externalVariables = expr.getAllExternalVariables();
-		for (QName qName: externalVariables)
-			if ("url".equals(qName.getLocalPart()))
-				expr.bindString(new QName("url"), urlStr, null);
-		XQSequence sequence = expr.executeQuery();
-		String parseOutput = sequence.getSequenceAsString(null);
-		return parseOutput;
+
+	private static Content createContent(Configuration conf, String urlStr)
+			throws FileNotFoundException, IOException {
+	    String contentType = "text/html";
+	    URL url = new URL(urlStr);
+	    URLConnection connection = url.openConnection();
+	    InputStream is = connection.getInputStream();
+	    byte bytes[] = IOUtils.toByteArray(is);
+	    Content content = new Content(urlStr, urlStr, bytes, contentType, new Metadata(), conf);
+		return content;
 	}
-	
-	public void printParseRules() {
-		for (Entry<String, List<PatternQueryPair>> domain : this.rules.entrySet()) {
-			System.out.println(domain.getKey());
-			for (PatternQueryPair pair: domain.getValue()) {
-				System.out.println("\t" + pair.pattern);
-			}
-		}
+
+	private static void usage() {
+	    System.err.println("Usage: XQueryParser <url> [segment]\n");		
 	}
-	
+
 	public static void main(String[] args) throws Exception {
 	    Configuration conf = NutchConfiguration.create();
 	    Content content = null;
@@ -250,20 +265,5 @@ public class XQueryParser implements HtmlParseFilter {
 	    Parse parse =  new ParseUtil(conf).parse(content).get(content.getUrl());
 	    String result = parse.getData().getMeta(XQueryParser.METADATA_FIELD);
 	    System.out.println(result);
-	}
-
-	private static Content createContent(Configuration conf, String urlStr)
-			throws FileNotFoundException, IOException {
-	    String contentType = "text/html";
-	    URL url = new URL(urlStr);
-	    URLConnection connection = url.openConnection();
-	    InputStream is = connection.getInputStream();
-	    byte bytes[] = IOUtils.toByteArray(is);
-	    Content content = new Content(urlStr, urlStr, bytes, contentType, new Metadata(), conf);
-		return content;
-	}
-
-	private static void usage() {
-	    System.err.println("Usage: XQueryParser <url> [segment]\n");		
 	}
 }

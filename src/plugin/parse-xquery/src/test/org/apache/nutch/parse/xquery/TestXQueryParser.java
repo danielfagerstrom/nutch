@@ -25,7 +25,6 @@ import java.io.InputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xquery.XQPreparedExpression;
 
 import junit.framework.TestCase;
 
@@ -50,7 +49,6 @@ public class TestXQueryParser extends TestCase {
 
 	// This system property is defined in ./src/plugin/build-plugin.xml
 	private String sampleDir = System.getProperty("test.data", ".");
-	private String fileSeparator = System.getProperty("file.separator");
 	private XQueryParser xQueryParser;
 	private Configuration conf;
 
@@ -74,7 +72,7 @@ public class TestXQueryParser extends TestCase {
 	}
 	
 	private void addConfigRules() {
-		conf.set(XQueryParser.XQUERYPARSER_RULES_FILE, "data/parse-rules.xml");
+		conf.set(XQueryParser.XQUERYPARSER_RULES_FILE, "parse-rules.xml");
 	}
 
 	public void createXQueryParser() throws Exception {
@@ -101,8 +99,7 @@ public class TestXQueryParser extends TestCase {
 		this.createXQueryParser();
 	    Content content = this.createContent(conf);
 		DocumentFragment doc = this.readXMLFragment(new ByteArrayInputStream(content.getContent()));
-		XQPreparedExpression expr = this.xQueryParser.matchURL(content.getUrl());
-		String parseResult = this.xQueryParser.parseDOM(expr, content.getUrl(), doc);
+		String parseResult = this.xQueryParser.parse(doc, content.getUrl());
 		System.out.println(parseResult);
 	}
 	
