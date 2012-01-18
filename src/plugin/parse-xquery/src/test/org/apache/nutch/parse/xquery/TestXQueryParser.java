@@ -99,7 +99,7 @@ public class TestXQueryParser extends TestCase {
 		this.createXQueryParser();
 	    Content content = this.createContent(conf);
 		DocumentFragment doc = this.readXMLFragment(new ByteArrayInputStream(content.getContent()));
-		String parseResult = this.xQueryParser.parse(doc, content.getUrl());
+		String parseResult = this.xQueryParser.parse(doc, content.getUrl(), content.getBaseUrl());
 		System.out.println(parseResult);
 	}
 	

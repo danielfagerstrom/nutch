@@ -32,6 +32,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.parse.ParseData;
 import org.apache.nutch.util.HadoopFSUtil;
+import org.apache.nutch.util.NutchConfiguration;
 
 /**
  * @author daniel
@@ -95,7 +96,7 @@ public class ParseResult extends Configured implements Tool {
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-		int exitCode = ToolRunner.run(new ParseResult(), args);
+		int exitCode = ToolRunner.run(NutchConfiguration.create(), new ParseResult(), args);
 		System.exit(exitCode);
 	}
 

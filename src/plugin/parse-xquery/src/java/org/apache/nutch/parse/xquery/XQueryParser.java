@@ -16,6 +16,7 @@
  */
 package org.apache.nutch.parse.xquery;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,6 +40,7 @@ import javax.xml.xquery.XQDataSource;
 import javax.xml.xquery.XQException;
 import javax.xml.xquery.XQPreparedExpression;
 import javax.xml.xquery.XQSequence;
+import javax.xml.xquery.XQStaticContext;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
@@ -122,8 +124,8 @@ public class XQueryParser implements HtmlParseFilter {
 			HTMLMetaTags metaTags, DocumentFragment doc) {
 		String urlStr = content.getUrl();
 		try {
-			String parseOutput = parse(doc, urlStr);
-		    if (parseOutput != null) {
+			String parseOutput = parse(doc, urlStr, content.getBaseUrl());
+		    if (parseOutput != null && !"".equals(parseOutput)) {
 			    // get parse obj
 			    Parse parse = parseResult.get(urlStr);
 			    Metadata metadata = parse.getData().getParseMeta();
@@ -138,16 +140,19 @@ public class XQueryParser implements HtmlParseFilter {
 		return parseResult;
 	}
 
-	public String parse(DocumentFragment doc, String urlStr)
+	public String parse(DocumentFragment doc, String urlStr, String baseUrlStr)
 			throws MalformedURLException, XQException {
 		String parseOutput = null;
 		XQPreparedExpression expr = this.matchURL(urlStr);
 		if (expr != null) {
 			expr.bindNode(XQConstants.CONTEXT_ITEM, doc, null);
 			QName[] externalVariables = expr.getAllExternalVariables();
-			for (QName qName: externalVariables)
+			for (QName qName: externalVariables) {
 				if ("url".equals(qName.getLocalPart()))
 					expr.bindString(new QName("url"), urlStr, null);
+				if ("base_url".equals(qName.getLocalPart()))
+					expr.bindString(new QName("base_url"), baseUrlStr, null);
+			}
 			XQSequence sequence = expr.executeQuery();
 			parseOutput = sequence.getSequenceAsString(null);
 		}
@@ -182,6 +187,10 @@ public class XQueryParser implements HtmlParseFilter {
 	private void parseRules() throws Exception {
 		String rulesFileName = this.getConf().get(XQUERYPARSER_RULES_FILE);
 		URL rulesResource = this.getConf().getResource(rulesFileName);
+		XQStaticContext ctx = this.xqConnection.getStaticContext();
+		// Use the directory of the rule file as base path for XQuery
+		ctx.setBaseURI(rulesResource.toString());
+		this.xqConnection.setStaticContext(ctx);
 	    InputStream is = rulesResource.openStream();
 		Document document = this.readXMLDocument(is);
 		Element root = document.getDocumentElement();
