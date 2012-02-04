@@ -123,8 +123,9 @@ public class XQueryParser implements HtmlParseFilter {
 	public ParseResult filter(Content content, ParseResult parseResult,
 			HTMLMetaTags metaTags, DocumentFragment doc) {
 		String urlStr = content.getUrl();
+		String baseHref = metaTags.getBaseHref() != null ? metaTags.getBaseHref().toExternalForm(): urlStr;
 		try {
-			String parseOutput = parse(doc, urlStr, metaTags.getBaseHref().toExternalForm());
+			String parseOutput = parse(doc, urlStr, baseHref);
 		    if (parseOutput != null && !"".equals(parseOutput)) {
 			    // get parse obj
 			    Parse parse = parseResult.get(urlStr);
