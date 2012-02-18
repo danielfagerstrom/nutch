@@ -181,10 +181,8 @@ public class XQueryParser implements HtmlParseFilter {
 		if (null != ruleList) {
 			for (XQueryIdentifier pair: ruleList) {
 				Matcher matcher = pair.pattern.matcher(pathAndQuery);
-				
 				if (matcher.matches())
 				    res.add(pair);
-				//return pair.expr;
 			}
 		}
 		if(res.size()== 0){
